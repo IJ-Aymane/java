@@ -1,7 +1,7 @@
-// EleveDAO.java
 package com.example.javafx_ghilani.database;
 
 import com.example.javafx_ghilani.model.Eleve;
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -84,6 +84,18 @@ public class EleveDAO {
         return null;
     }
 
+    /**
+     * Recherche les élèves en fonction des critères fournis.
+     * Si un critère est null ou vide, il n'est pas pris en compte dans la recherche.
+     *
+     * @param code Code de l'élève (exact)
+     * @param nom Nom de l'élève (contient)
+     * @param prenom Prénom de l'élève (contient)
+     * @param filiere Code de la filière (exact)
+     * @param niveau Niveau (exact)
+     * @return Liste des élèves correspondants aux critères
+     * @throws SQLException
+     */
     public List<Eleve> searchEleves(String code, String nom, String prenom, String filiere, Integer niveau) throws SQLException {
         StringBuilder sql = new StringBuilder("SELECT * FROM Eleve WHERE 1=1");
         List<Object> params = new ArrayList<>();
@@ -130,4 +142,3 @@ public class EleveDAO {
         return eleves;
     }
 }
-

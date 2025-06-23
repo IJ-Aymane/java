@@ -17,6 +17,12 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import javafx.collections.ObservableList;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
+import java.io.IOException;
+
+
 
 public class XMLUtil {
     private static final String XML_FILE_PATH = "D:\\ENSIT.xml";
@@ -150,6 +156,51 @@ public class XMLUtil {
 
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+    public static void exportElevesToXML(ObservableList<Eleve> eleves) throws IOException {
+        try {
+            DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
+
+            // Créer le document XML racine
+            Document doc = docBuilder.newDocument();
+            Element rootElement = doc.createElement("Eleves");
+            doc.appendChild(rootElement);
+
+            for (Eleve eleve : eleves) {
+                Element eleveElement = doc.createElement("Eleve");
+
+                // Ajouter les détails de l’étudiant
+                eleveElement.setAttribute("code", eleve.getCode());
+                eleveElement.setAttribute("nom", eleve.getNom());
+                eleveElement.setAttribute("prenom", eleve.getPrenom());
+                eleveElement.setAttribute("niveau", String.valueOf(eleve.getNiveau()));
+                eleveElement.setAttribute("filiere", eleve.getCodeFil());
+
+                rootElement.appendChild(eleveElement);
+            }
+
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+            DOMSource source = new DOMSource(doc);
+
+            // Demander à l'utilisateur où enregistrer le fichier
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Enregistrer en XML");
+            fileChooser.setInitialFileName("eleves.xml");
+            fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Fichiers XML", "*.xml"));
+
+            Stage stage = new Stage();
+            File file = fileChooser.showSaveDialog(stage);
+
+            if (file != null) {
+                StreamResult result = new StreamResult(file);
+                transformer.transform(source, result);
+            }
+
+        } catch (Exception e) {
+            throw new IOException("Erreur lors de l'exportation XML : " + e.getMessage());
         }
     }
 }

@@ -3,6 +3,7 @@ package com.example.javafx_ghilani.controller;
 import com.example.javafx_ghilani.database.*;
 import com.example.javafx_ghilani.model.*;
 import com.example.javafx_ghilani.util.XMLUtil;
+import com.example.javafx_ghilani.util.PDFUtil;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -11,12 +12,17 @@ import javafx.fxml.Initializable;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.ResourceBundle;
@@ -45,6 +51,9 @@ public class EtudiantsController implements Initializable {
     private FiliereDAO filiereDAO;
     private ObservableList<Eleve> elevesData;
     private Eleve selectedEleve;
+
+    // قائمة للاحتفاظ بالطلاب المحذوفين
+    private List<Eleve> deletedEleves = new ArrayList<>();
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -92,14 +101,17 @@ public class EtudiantsController implements Initializable {
     }
 
     private void setupCheckBoxListeners() {
-        rechercheCodeCheckBox.setOnAction(e -> {
-            if (rechercheCodeCheckBox.isSelected()) {
-                rechercheNomCheckBox.setSelected(false);
-                recherchePrenomCheckBox.setSelected(false);
-                rechercheFiliereCheckBox.setSelected(false);
-                rechercheNiveauCheckBox.setSelected(false);
-            }
-        });
+        // إضافة مستمعات لجميع checkboxes لضمان عدم تداخل البحث
+        rechercheCodeCheckBox.setOnAction(e -> updateSearchCheckBoxes());
+        rechercheNomCheckBox.setOnAction(e -> updateSearchCheckBoxes());
+        recherchePrenomCheckBox.setOnAction(e -> updateSearchCheckBoxes());
+        rechercheFiliereCheckBox.setOnAction(e -> updateSearchCheckBoxes());
+        rechercheNiveauCheckBox.setOnAction(e -> updateSearchCheckBoxes());
+    }
+
+    private void updateSearchCheckBoxes() {
+        // يمكن تحديد أكثر من خيار بحث في نفس الوقت
+        // هذا منطق أفضل من تحديد خيار واحد فقط
     }
 
     private void loadFilieres() {
@@ -112,7 +124,7 @@ public class EtudiantsController implements Initializable {
     }
 
     private void loadNiveauxForFiliere(String codeFiliere) {
-        // For this example, we'll show all levels
+        // يمكن تحسين هذا لتحميل المستويات المتاحة للفرع المحدد
         niveauComboBox.setItems(FXCollections.observableArrayList(1, 2, 3));
     }
 
@@ -132,7 +144,7 @@ public class EtudiantsController implements Initializable {
         prenomField.setText(eleve.getPrenom());
         niveauComboBox.setValue(eleve.getNiveau());
 
-        // Find and select the filiere
+        // البحث عن الفرع وتحديده
         for (Filiere filiere : filiereComboBox.getItems()) {
             if (filiere.getCode().equals(eleve.getCodeFil())) {
                 filiereComboBox.setValue(filiere);
@@ -180,6 +192,7 @@ public class EtudiantsController implements Initializable {
             eleveDAO.updateEleve(eleve);
             loadAllEleves();
             clearForm();
+            selectedEleve = null;
             showAlert("Succès", "Étudiant modifié avec succès!");
         } catch (SQLException e) {
             showAlert("Erreur", "Impossible de modifier l'étudiant: " + e.getMessage());
@@ -201,8 +214,15 @@ public class EtudiantsController implements Initializable {
         Optional<ButtonType> result = confirmAlert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
             try {
+                // إضافة الطالب المحذوف إلى القائمة
+                deletedEleves.add(selectedEleve);
+
+                // أرشفة في XML
                 XMLUtil.archiveDeletedEleve(selectedEleve);
+
+                // حذف من قاعدة البيانات
                 eleveDAO.deleteEleve(selectedEleve.getCode());
+
                 loadAllEleves();
                 clearForm();
                 selectedEleve = null;
@@ -216,34 +236,79 @@ public class EtudiantsController implements Initializable {
     @FXML
     private void onRechercherClick() {
         try {
-            String code = rechercheCodeCheckBox.isSelected() ? codeField.getText() : null;
-            String nom = rechercheNomCheckBox.isSelected() ? nomField.getText() : null;
-            String prenom = recherchePrenomCheckBox.isSelected() ? prenomField.getText() : null;
+            String code = rechercheCodeCheckBox.isSelected() && !codeField.getText().isEmpty()
+                    ? codeField.getText() : null;
+            String nom = rechercheNomCheckBox.isSelected() && !nomField.getText().isEmpty()
+                    ? nomField.getText() : null;
+            String prenom = recherchePrenomCheckBox.isSelected() && !prenomField.getText().isEmpty()
+                    ? prenomField.getText() : null;
             String codeFil = rechercheFiliereCheckBox.isSelected() && filiereComboBox.getValue() != null
-                    ? filiereComboBox.getValue().getCode()
-                    : null;
+                    ? filiereComboBox.getValue().getCode() : null;
             Integer niveau = rechercheNiveauCheckBox.isSelected() ? niveauComboBox.getValue() : null;
 
-            List<Eleve> resultats = eleveDAO.rechercherEleves(code, nom, prenom, codeFil, niveau);
+            // إذا لم يتم تحديد أي معايير بحث، أظهر جميع الطلاب
+            if (code == null && nom == null && prenom == null && codeFil == null && niveau == null) {
+                loadAllEleves();
+                return;
+            }
+
+            List<Eleve> resultats = eleveDAO.searchEleves(code, nom, prenom, codeFil, niveau);
             elevesData.setAll(resultats);
+
+            if (resultats.isEmpty()) {
+                showAlert("Information", "Aucun résultat trouvé pour les critères de recherche spécifiés.");
+            }
         } catch (SQLException e) {
             showAlert("Erreur", "Erreur lors de la recherche : " + e.getMessage());
         }
     }
 
+    @FXML
+    private void onAfficherTousClick() {
+        // إعادة تحميل جميع الطلاب
+        loadAllEleves();
+        clearForm();
+        clearSearchCheckBoxes();
+    }
+
+    private void clearSearchCheckBoxes() {
+        rechercheCodeCheckBox.setSelected(false);
+        rechercheNomCheckBox.setSelected(false);
+        recherchePrenomCheckBox.setSelected(false);
+        rechercheFiliereCheckBox.setSelected(false);
+        rechercheNiveauCheckBox.setSelected(false);
+    }
+
     private boolean validateForm() {
-        if (codeField.getText().isEmpty() || nomField.getText().isEmpty() || prenomField.getText().isEmpty()
-                || niveauComboBox.getValue() == null || filiereComboBox.getValue() == null) {
-            showAlert("Validation", "Veuillez remplir tous les champs.");
+        StringBuilder errors = new StringBuilder();
+
+        if (codeField.getText().trim().isEmpty()) {
+            errors.append("- Le code est obligatoire\n");
+        }
+        if (nomField.getText().trim().isEmpty()) {
+            errors.append("- Le nom est obligatoire\n");
+        }
+        if (prenomField.getText().trim().isEmpty()) {
+            errors.append("- Le prénom est obligatoire\n");
+        }
+        if (niveauComboBox.getValue() == null) {
+            errors.append("- Le niveau est obligatoire\n");
+        }
+        if (filiereComboBox.getValue() == null) {
+            errors.append("- La filière est obligatoire\n");
+        }
+
+        if (errors.length() > 0) {
+            showAlert("Validation", "Veuillez corriger les erreurs suivantes :\n" + errors.toString());
             return false;
         }
         return true;
     }
 
     private Eleve createEleveFromForm() {
-        String code = codeField.getText();
-        String nom = nomField.getText();
-        String prenom = prenomField.getText();
+        String code = codeField.getText().trim();
+        String nom = nomField.getText().trim();
+        String prenom = prenomField.getText().trim();
         int niveau = niveauComboBox.getValue();
         String codeFil = filiereComboBox.getValue().getCode();
         return new Eleve(code, nom, prenom, niveau, codeFil);
@@ -277,9 +342,74 @@ public class EtudiantsController implements Initializable {
 
     @FXML
     private void onImprimerPDFClick() {
+        // إنشاء مربع حوار لاختيار نوع التقرير
+        Alert choiceAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        choiceAlert.setTitle("Choix du rapport");
+        choiceAlert.setHeaderText("Quel type de rapport voulez-vous générer ?");
+
+        ButtonType btnTousEtudiants = new ButtonType("Tous les étudiants");
+        ButtonType btnEtudiantsSupprimés = new ButtonType("Étudiants supprimés");
+        ButtonType btnAnnuler = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+        choiceAlert.getButtonTypes().setAll(btnTousEtudiants, btnEtudiantsSupprimés, btnAnnuler);
+
+        Optional<ButtonType> choice = choiceAlert.showAndWait();
+
+        if (choice.isPresent()) {
+            if (choice.get() == btnTousEtudiants) {
+                generateAllStudentsPDF();
+            } else if (choice.get() == btnEtudiantsSupprimés) {
+                generateDeletedStudentsPDF();
+            }
+        }
+    }
+
+    private void generateAllStudentsPDF() {
         try {
-            com.example.javafx_ghilani.util.PDFUtil.exportElevesToPDF(elevesData);
-            showAlert("Succès", "Exportation PDF réussie !");
+            // اختيار مكان حفظ الملف
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Sauvegarder le rapport PDF");
+            fileChooser.setInitialFileName("rapport_tous_etudiants.pdf");
+            fileChooser.getExtensionFilters().add(
+                    new FileChooser.ExtensionFilter("Fichiers PDF", "*.pdf")
+            );
+
+            Stage stage = (Stage) elevesTable.getScene().getWindow();
+            File file = fileChooser.showSaveDialog(stage);
+
+            if (file != null) {
+                List<Eleve> currentEleves = new ArrayList<>(elevesData);
+                PDFUtil.generateStudentsReport(currentEleves, file.getAbsolutePath(),
+                        "Rapport de Tous les Étudiants");
+                showAlert("Succès", "Rapport PDF généré avec succès !\nFichier : " + file.getAbsolutePath());
+            }
+        } catch (Exception e) {
+            showAlert("Erreur", "Erreur lors de la génération du PDF : " + e.getMessage());
+        }
+    }
+
+    private void generateDeletedStudentsPDF() {
+        try {
+            if (deletedEleves.isEmpty()) {
+                showAlert("Information", "Aucun étudiant supprimé à inclure dans le rapport.");
+                return;
+            }
+
+            // اختيار مكان حفظ الملف
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Sauvegarder le rapport des étudiants supprimés");
+            fileChooser.setInitialFileName("rapport_etudiants_supprimes.pdf");
+            fileChooser.getExtensionFilters().add(
+                    new FileChooser.ExtensionFilter("Fichiers PDF", "*.pdf")
+            );
+
+            Stage stage = (Stage) elevesTable.getScene().getWindow();
+            File file = fileChooser.showSaveDialog(stage);
+
+            if (file != null) {
+                PDFUtil.generateDeletedStudentsReport(deletedEleves, file.getAbsolutePath());
+                showAlert("Succès", "Rapport des étudiants supprimés généré avec succès !\nFichier : " + file.getAbsolutePath());
+            }
         } catch (Exception e) {
             showAlert("Erreur", "Erreur lors de la génération du PDF : " + e.getMessage());
         }
@@ -305,5 +435,63 @@ public class EtudiantsController implements Initializable {
         } catch (IOException e) {
             showAlert("Erreur", "Impossible d'afficher les détails : " + e.getMessage());
         }
+    }
+
+    // دالة للحصول على قائمة الطلاب المحذوفين (يمكن استخدamها في مكان آخر)
+    public List<Eleve> getDeletedEleves() {
+        return new ArrayList<>(deletedEleves);
+    }
+
+    // دالة لمسح قائمة الطلاب المحذوفين
+    public void clearDeletedEleves() {
+        deletedEleves.clear();
+    }
+    /**
+     * Recherche des étudiants avec des critères optionnels.
+     */
+    public List<Eleve> rechercherEleves(String code, String nom, String prenom, String codeFil, Integer niveau) throws SQLException {
+        StringBuilder sql = new StringBuilder("SELECT * FROM Eleve WHERE 1=1");
+        List<Object> params = new ArrayList<>();
+
+        if (code != null && !code.isEmpty()) {
+            sql.append(" AND code LIKE ?");
+            params.add("%" + code + "%");
+        }
+        if (nom != null && !nom.isEmpty()) {
+            sql.append(" AND nom LIKE ?");
+            params.add("%" + nom + "%");
+        }
+        if (prenom != null && !prenom.isEmpty()) {
+            sql.append(" AND prenom LIKE ?");
+            params.add("%" + prenom + "%");
+        }
+        if (codeFil != null && !codeFil.isEmpty()) {
+            sql.append(" AND code_fil = ?");
+            params.add(codeFil);
+        }
+        if (niveau != null) {
+            sql.append(" AND niveau = ?");
+            params.add(niveau);
+        }
+
+        List<Eleve> eleves = new ArrayList<>();
+        try (PreparedStatement stmt = dbManager.getConnection().prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) {
+                stmt.setObject(i + 1, params.get(i));
+            }
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Eleve eleve = new Eleve();
+                    eleve.setId(rs.getInt("id"));
+                    eleve.setCode(rs.getString("code"));
+                    eleve.setNom(rs.getString("nom"));
+                    eleve.setPrenom(rs.getString("prenom"));
+                    eleve.setNiveau(rs.getInt("niveau"));
+                    eleve.setCodeFil(rs.getString("code_fil"));
+                    eleves.add(eleve);
+                }
+            }
+        }
+        return eleves;
     }
 }
