@@ -1,4 +1,3 @@
-// Eleve.java
 package com.example.javafx_ghilani.model;
 
 public class Eleve {
@@ -6,40 +5,49 @@ public class Eleve {
     private String code;
     private String nom;
     private String prenom;
+    private String email;
+    private int annee;
     private int niveau;
+    private String filiere;
+
+    // Champs manquants
+    private int age;
     private String codeFil;
 
-    public Eleve() {}
-
-    public Eleve(String code, String nom, String prenom, int niveau, String codeFil) {
+    public Eleve(int id, String code, String nom, String prenom, String email, int annee, int niveau, String filiere) {
+        this.id = id;
         this.code = code;
         this.nom = nom;
         this.prenom = prenom;
+        this.email = email;
+        this.annee = annee;
         this.niveau = niveau;
-        this.codeFil = codeFil;
+        this.filiere = filiere;
+        this.codeFil = filiere; // si codeFil est identique à filiere
+        this.age = 0; // valeur par défaut
     }
 
-    // Getters and Setters
+    // Getters
     public int getId() { return id; }
-    public void setId(int id) { this.id = id; }
-
     public String getCode() { return code; }
-    public void setCode(String code) { this.code = code; }
-
     public String getNom() { return nom; }
-    public void setNom(String nom) { this.nom = nom; }
-
     public String getPrenom() { return prenom; }
-    public void setPrenom(String prenom) { this.prenom = prenom; }
-
+    public String getEmail() { return email; }
+    public int getAnnee() { return annee; }
     public int getNiveau() { return niveau; }
-    public void setNiveau(int niveau) { this.niveau = niveau; }
-
+    public String getFiliere() { return filiere; }
+    public int getAge() { return age; }
     public String getCodeFil() { return codeFil; }
-    public void setCodeFil(String codeFil) { this.codeFil = codeFil; }
 
-    @Override
-    public String toString() {
-        return code + " - " + nom + " " + prenom;
-    }
+    // Setters
+    public void setId(int id) { this.id = id; }
+    public void setCode(String code) { this.code = code; }
+    public void setNom(String nom) { this.nom = nom; }
+    public void setPrenom(String prenom) { this.prenom = prenom; }
+    public void setEmail(String email) { this.email = email; }
+    public void setAnnee(int annee) { this.annee = annee; }
+    public void setNiveau(int niveau) { this.niveau = niveau; }
+    public void setFiliere(String filiere) { this.filiere = filiere; }
+    public void setAge(int age) { this.age = age; }
+    public void setCodeFil(String codeFil) { this.codeFil = codeFil; }
 }

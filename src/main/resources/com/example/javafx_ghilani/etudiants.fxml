@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.example.javafx_ghilani.controller.EtudiantsController">
+
+    <top>
+        <VBox spacing="10" padding="10">
+            <HBox spacing="10">
+                <Label text="Code:"/>
+                <TextField fx:id="codeTextField" />
+                <Label text="Nom:"/>
+                <TextField fx:id="nomTextField" />
+                <Label text="Prénom:"/>
+                <TextField fx:id="prenomTextField" />
+            </HBox>
+            <HBox spacing="10">
+                <Label text="Filière:"/>
+                <ComboBox fx:id="filiereComboBox" />
+                <Label text="Niveau:"/>
+                <ComboBox fx:id="niveauComboBox" />
+            </HBox>
+            <HBox spacing="10">
+                <Button fx:id="ajouterButton" text="Ajouter"/>
+                <Button fx:id="modifierButton" text="Modifier"/>
+                <Button fx:id="supprimerButton" text="Supprimer"/>
+                <Button fx:id="rechercherButton" text="Rechercher"/>
+                <Button fx:id="nouveauButton" text="Nouveau"/>
+                <Button fx:id="gestionNotesButton" text="Notes"/>
+            </HBox>
+        </VBox>
+    </top>
+
+    <center>
+        <TableView fx:id="tableView">
+            <columns>
+                <TableColumn fx:id="colCode" text="Code"/>
+                <TableColumn fx:id="colNom" text="Nom"/>
+                <TableColumn fx:id="colPrenom" text="Prénom"/>
+                <TableColumn fx:id="colFiliere" text="Filière"/>
+                <TableColumn fx:id="colNiveau" text="Niveau"/>
+            </columns>
+        </TableView>
+    </center>
+
+</BorderPane>

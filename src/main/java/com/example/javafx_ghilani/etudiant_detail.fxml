@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.example.javafx_ghilani.controller.EtudiantDetailController">
+    <Label fx:id="idLabel" text="ID: "/>
+    <Label fx:id="codeLabel" text="Code: "/>
+    <Label fx:id="nomLabel" text="Nom: "/>
+    <Label fx:id="prenomLabel" text="Prenom: "/>
+    <Label fx:id="emailLabel" text="Email: "/>
+    <Label fx:id="ageLabel" text="Age: "/>
+    <Label fx:id="niveauLabel" text="Niveau: "/>
+    <Label fx:id="codeFilLabel" text="Code Fil: "/>
+</VBox>

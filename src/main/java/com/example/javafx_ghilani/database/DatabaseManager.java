@@ -1,25 +1,44 @@
 package com.example.javafx_ghilani.database;
 
-
 import java.sql.*;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.ArrayList;
+import com.example.javafx_ghilani.model.Eleve;
+
+
 
 public class DatabaseManager {
-    private static final String URL = "jdbc:mysql://localhost:3306/gestion_notes";
+    private static final String URL = "jdbc:mysql://localhost:3306/?serverTimezone=UTC";
     private static final String USER = "root";
-    private static final String PASSWORD = "";
+    private static final String PASSWORD = "2002"; // كلمة المرور الخاصة بك
 
     private Connection connection;
 
     public DatabaseManager() {
         try {
+            // الاتصال بالسيرفر بدون تحديد قاعدة بيانات
             connection = DriverManager.getConnection(URL, USER, PASSWORD);
+
+            // إنشاء قاعدة البيانات إذا لم تكن موجودة
+            try (Statement stmt = connection.createStatement()) {
+                stmt.execute("CREATE DATABASE IF NOT EXISTS gestion_notes CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            }
+
+            // الاتصال بقاعدة البيانات gestion_notes
+            connection = DriverManager.getConnection(
+                    "jdbc:mysql://localhost:3306/gestion_notes?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
+                    USER,
+                    PASSWORD
+            );
+
             createTables();
             createStoredProcedures();
             createTriggers();
+
         } catch (SQLException e) {
             e.printStackTrace();
+            System.err.println("Database connection failed. Ensure MySQL is running and credentials are correct.");
+            connection = null;
         }
     }
 
@@ -28,6 +47,8 @@ public class DatabaseManager {
     }
 
     private void createTables() throws SQLException {
+        if (connection == null) return;
+
         String[] tables = {
                 """
             CREATE TABLE IF NOT EXISTS Filiere (
@@ -45,6 +66,8 @@ public class DatabaseManager {
                 semestre INT NOT NULL,
                 code_fil VARCHAR(10),
                 FOREIGN KEY (code_fil) REFERENCES Filiere(code)
+                    ON DELETE SET NULL
+                    ON UPDATE CASCADE
             )
             """,
                 """
@@ -55,6 +78,8 @@ public class DatabaseManager {
                 VH INT NOT NULL,
                 code_module VARCHAR(10),
                 FOREIGN KEY (code_module) REFERENCES Module(code)
+                    ON DELETE SET NULL
+                    ON UPDATE CASCADE
             )
             """,
                 """
@@ -66,6 +91,8 @@ public class DatabaseManager {
                 niveau INT NOT NULL,
                 code_fil VARCHAR(10),
                 FOREIGN KEY (code_fil) REFERENCES Filiere(code)
+                    ON DELETE SET NULL
+                    ON UPDATE CASCADE
             )
             """,
                 """
@@ -74,8 +101,12 @@ public class DatabaseManager {
                 code_eleve VARCHAR(10),
                 code_mat VARCHAR(10),
                 note DECIMAL(4,2),
-                FOREIGN KEY (code_eleve) REFERENCES Eleve(code),
+                FOREIGN KEY (code_eleve) REFERENCES Eleve(code)
+                    ON DELETE CASCADE
+                    ON UPDATE CASCADE,
                 FOREIGN KEY (code_mat) REFERENCES Matiere(code)
+                    ON DELETE CASCADE
+                    ON UPDATE CASCADE
             )
             """,
                 """
@@ -85,8 +116,12 @@ public class DatabaseManager {
                 code_fil VARCHAR(10),
                 niveau INT,
                 moyenne DECIMAL(4,2),
-                FOREIGN KEY (code_eleve) REFERENCES Eleve(code),
+                FOREIGN KEY (code_eleve) REFERENCES Eleve(code)
+                    ON DELETE CASCADE
+                    ON UPDATE CASCADE,
                 FOREIGN KEY (code_fil) REFERENCES Filiere(code)
+                    ON DELETE SET NULL
+                    ON UPDATE CASCADE
             )
             """
         };
@@ -97,12 +132,13 @@ public class DatabaseManager {
             }
         }
 
-        // Insert initial data
         insertInitialData();
     }
 
     private void insertInitialData() throws SQLException {
-        // Insert Filieres
+        if (connection == null) return;
+
+        // إدخال بيانات أولية في جدول Filiere
         String insertFiliere = "INSERT IGNORE INTO Filiere (code, designation) VALUES (?, ?)";
         try (PreparedStatement stmt = connection.prepareStatement(insertFiliere)) {
             stmt.setString(1, "GI");
@@ -114,7 +150,7 @@ public class DatabaseManager {
             stmt.executeUpdate();
         }
 
-        // Insert Modules
+        // إدخال بيانات أولية في جدول Module
         String insertModule = "INSERT IGNORE INTO Module (code, designation, niveau, semestre, code_fil) VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = connection.prepareStatement(insertModule)) {
             stmt.setString(1, "M1");
@@ -132,7 +168,7 @@ public class DatabaseManager {
             stmt.executeUpdate();
         }
 
-        // Insert Matieres
+        // إدخال بيانات أولية في جدول Matiere
         String insertMatiere = "INSERT IGNORE INTO Matiere (code, designation, VH, code_module) VALUES (?, ?, ?, ?)";
         try (PreparedStatement stmt = connection.prepareStatement(insertMatiere)) {
             stmt.setString(1, "MAT1");
@@ -156,9 +192,19 @@ public class DatabaseManager {
     }
 
     private void createStoredProcedures() throws SQLException {
-        String[] procedures = {
-                """
-            CREATE PROCEDURE IF NOT EXISTS AddEleve(
+        if (connection == null) return;
+
+        // تغيير DELIMITER مطلوب لـ MySQL عند إنشاء stored procedures
+        try (Statement stmt = connection.createStatement()) {
+            // حذف الإجراءات المخزنة الموجودة
+            stmt.execute("DROP PROCEDURE IF EXISTS AddEleve");
+            stmt.execute("DROP PROCEDURE IF EXISTS UpdateEleve");
+            stmt.execute("DROP PROCEDURE IF EXISTS DeleteEleve");
+        }
+
+        // إنشاء إجراء AddEleve
+        String addEleveProc = """
+            CREATE PROCEDURE AddEleve(
                 IN p_code VARCHAR(10),
                 IN p_nom VARCHAR(50),
                 IN p_prenom VARCHAR(50),
@@ -169,9 +215,11 @@ public class DatabaseManager {
                 INSERT INTO Eleve (code, nom, prenom, niveau, code_fil)
                 VALUES (p_code, p_nom, p_prenom, p_niveau, p_code_fil);
             END
-            """,
-                """
-            CREATE PROCEDURE IF NOT EXISTS UpdateEleve(
+            """;
+
+        // إنشاء إجراء UpdateEleve
+        String updateEleveProc = """
+            CREATE PROCEDURE UpdateEleve(
                 IN p_code VARCHAR(10),
                 IN p_nom VARCHAR(50),
                 IN p_prenom VARCHAR(50),
@@ -183,42 +231,48 @@ public class DatabaseManager {
                 SET nom = p_nom, prenom = p_prenom, niveau = p_niveau, code_fil = p_code_fil
                 WHERE code = p_code;
             END
-            """,
-                """
-            CREATE PROCEDURE IF NOT EXISTS DeleteEleve(IN p_code VARCHAR(10))
+            """;
+
+        // إنشاء إجراء DeleteEleve
+        String deleteEleveProc = """
+            CREATE PROCEDURE DeleteEleve(IN p_code VARCHAR(10))
             BEGIN
                 DELETE FROM Notes WHERE code_eleve = p_code;
                 DELETE FROM Moyennes WHERE code_eleve = p_code;
                 DELETE FROM Eleve WHERE code = p_code;
             END
-            """
-        };
+            """;
 
-        for (String procedure : procedures) {
-            try (Statement stmt = connection.createStatement()) {
-                stmt.execute("DROP PROCEDURE IF EXISTS " + procedure.split(" ")[3]);
-                stmt.execute(procedure.replace("IF NOT EXISTS", ""));
-            }
+        // تنفيذ كل إجراء بشكل منفصل
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute(addEleveProc);
+            stmt.execute(updateEleveProc);
+            stmt.execute(deleteEleveProc);
         }
     }
 
     private void createTriggers() throws SQLException {
-        String trigger = """
-            CREATE TRIGGER IF NOT EXISTS after_moyenne_insert
-            AFTER INSERT ON Moyennes
-            FOR EACH ROW
-            BEGIN
-                IF NEW.moyenne >= 10 THEN
-                    UPDATE Eleve 
-                    SET niveau = niveau + 1 
-                    WHERE code = NEW.code_eleve AND niveau < 3;
-                END IF;
-            END
-            """;
+        if (connection == null) return;
 
         try (Statement stmt = connection.createStatement()) {
+            // حذف الـ trigger إذا كان موجوداً
             stmt.execute("DROP TRIGGER IF EXISTS after_moyenne_insert");
-            stmt.execute(trigger.replace("IF NOT EXISTS", ""));
+
+            // إنشاء الـ trigger
+            String triggerCreate = """
+                CREATE TRIGGER after_moyenne_insert
+                AFTER INSERT ON Moyennes
+                FOR EACH ROW
+                BEGIN
+                    IF NEW.moyenne >= 10 THEN
+                        UPDATE Eleve 
+                        SET niveau = niveau + 1 
+                        WHERE code = NEW.code_eleve AND niveau < 3;
+                    END IF;
+                END
+                """;
+
+            stmt.execute(triggerCreate);
         }
     }
 
@@ -231,4 +285,26 @@ public class DatabaseManager {
             e.printStackTrace();
         }
     }
+    public List<Eleve> getAllEleves() throws SQLException {
+        List<Eleve> eleves = new ArrayList<>();
+        String sql = "SELECT * FROM eleve";
+        try (PreparedStatement stmt = connection.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                Eleve eleve = new Eleve(
+                        rs.getInt("id"),
+                        rs.getString("code"),
+                        rs.getString("nom"),
+                        rs.getString("prenom"),
+                        rs.getString("email"),
+                        rs.getInt("annee"),
+                        rs.getInt("niveau"),
+                        rs.getString("filiere")
+                );
+                eleves.add(eleve);
+            }
+        }
+        return eleves;
+    }
+
 }
