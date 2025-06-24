@@ -18,11 +18,8 @@ public class EtudiantDetailController {
     @FXML
     private Label prenomLabel;
 
-    @FXML
-    private Label emailLabel;
-
-    @FXML
-    private Label ageLabel;
+    // Suppression des labels emailLabel et ageLabel car Eleve ne possède pas ces champs
+    // Si tu veux les garder dans l'interface, il faut les ajouter dans ta classe Eleve
 
     @FXML
     private Label niveauLabel;
@@ -36,10 +33,16 @@ public class EtudiantDetailController {
             codeLabel.setText(eleve.getCode());
             nomLabel.setText(eleve.getNom());
             prenomLabel.setText(eleve.getPrenom());
-            emailLabel.setText(eleve.getEmail());
-            ageLabel.setText(String.valueOf(eleve.getAge()));
             niveauLabel.setText(String.valueOf(eleve.getNiveau()));
             codeFilLabel.setText(eleve.getCodeFil());
+        } else {
+            // Si eleve est null, on peut nettoyer les labels (optionnel)
+            idLabel.setText("");
+            codeLabel.setText("");
+            nomLabel.setText("");
+            prenomLabel.setText("");
+            niveauLabel.setText("");
+            codeFilLabel.setText("");
         }
     }
 }

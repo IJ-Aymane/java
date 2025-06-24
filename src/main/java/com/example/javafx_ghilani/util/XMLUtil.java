@@ -40,8 +40,6 @@ public class XMLUtil {
                     eleveElement.getElementsByTagName("code").item(0).getTextContent(),
                     eleveElement.getElementsByTagName("nom").item(0).getTextContent(),
                     eleveElement.getElementsByTagName("prenom").item(0).getTextContent(),
-                    eleveElement.getElementsByTagName("email").item(0).getTextContent(),
-                    Integer.parseInt(eleveElement.getElementsByTagName("age").item(0).getTextContent()),
                     Integer.parseInt(eleveElement.getElementsByTagName("niveau").item(0).getTextContent()),
                     eleveElement.getElementsByTagName("codeFil").item(0).getTextContent()
             );
@@ -63,8 +61,6 @@ public class XMLUtil {
             eleveElement.appendChild(createElement(document, "code", eleve.getCode()));
             eleveElement.appendChild(createElement(document, "nom", eleve.getNom()));
             eleveElement.appendChild(createElement(document, "prenom", eleve.getPrenom()));
-            eleveElement.appendChild(createElement(document, "email", eleve.getEmail()));
-            eleveElement.appendChild(createElement(document, "age", String.valueOf(eleve.getAge())));
             eleveElement.appendChild(createElement(document, "niveau", String.valueOf(eleve.getNiveau())));
             eleveElement.appendChild(createElement(document, "codeFil", eleve.getCodeFil()));
             rootElement.appendChild(eleveElement);

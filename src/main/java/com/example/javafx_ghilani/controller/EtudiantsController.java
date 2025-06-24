@@ -1,220 +1,140 @@
 package com.example.javafx_ghilani.controller;
 
-import com.example.javafx_ghilani.database.EleveDAO;
 import com.example.javafx_ghilani.model.Eleve;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
-
-import java.io.IOException;
-import java.sql.SQLException;
-import java.time.LocalDateTime;
-import java.util.List;
 
 public class EtudiantsController {
 
-    @FXML private ComboBox<String> filiereComboBox;
-    @FXML private ComboBox<Integer> niveauComboBox;
-    @FXML private TextField codeTextField;
-    @FXML private TextField nomTextField;
-    @FXML private TextField prenomTextField;
-    @FXML private Button nouveauButton;
-    @FXML private Button ajouterButton;
-    @FXML private Button modifierButton;
-    @FXML private Button supprimerButton;
-    @FXML private Button rechercherButton;
-    @FXML private Button gestionNotesButton;
-    @FXML private CheckBox codeCheckBox;
-    @FXML private CheckBox nomCheckBox;
-    @FXML private CheckBox prenomCheckBox;
-    @FXML private TableView<Eleve> tableView;
+    @FXML private TextField txtCode;
+    @FXML private TextField txtNom;
+    @FXML private TextField txtPrenom;
+    @FXML private TextField txtNiveau;
+    @FXML private TextField txtCodeFil;
+
+    @FXML private TableView<Eleve> tableEleves;
+    @FXML private TableColumn<Eleve, Integer> colId;
     @FXML private TableColumn<Eleve, String> colCode;
     @FXML private TableColumn<Eleve, String> colNom;
     @FXML private TableColumn<Eleve, String> colPrenom;
-    @FXML private TableColumn<Eleve, String> colFiliere;
     @FXML private TableColumn<Eleve, Integer> colNiveau;
+    @FXML private TableColumn<Eleve, String> colCodeFil;
 
-    private final EleveDAO eleveDAO = new EleveDAO();
-    private ObservableList<Eleve> eleveList = FXCollections.observableArrayList();
+    private final ObservableList<Eleve> listeEleves = FXCollections.observableArrayList();
 
     @FXML
-    private void initialize() {
-        try {
-            loadFilieres();
-            filiereComboBox.valueProperty().addListener((obs, oldVal, newVal) -> loadNiveaux(newVal));
-        } catch (SQLException e) {
-            showAlert("Erreur", "Échec de chargement des données: " + e.getMessage());
-        }
-        initializeTable();
-        nouveauButton.setOnAction(e -> resetForm());
-        ajouterButton.setOnAction(e -> addEleve());
-        modifierButton.setOnAction(e -> modifyEleve());
-        supprimerButton.setOnAction(e -> deleteEleve());
-        rechercherButton.setOnAction(e -> searchEleves());
-        gestionNotesButton.setOnAction(e -> openNoteManagement());
-    }
-
-    private void initializeTable() {
+    public void initialize() {
+        // Initialisation des colonnes avec les noms des propriétés dans la classe Eleve
+        colId.setCellValueFactory(new PropertyValueFactory<>("id"));
         colCode.setCellValueFactory(new PropertyValueFactory<>("code"));
         colNom.setCellValueFactory(new PropertyValueFactory<>("nom"));
         colPrenom.setCellValueFactory(new PropertyValueFactory<>("prenom"));
-        colFiliere.setCellValueFactory(new PropertyValueFactory<>("filiere"));
         colNiveau.setCellValueFactory(new PropertyValueFactory<>("niveau"));
+        colCodeFil.setCellValueFactory(new PropertyValueFactory<>("codeFil"));
+
+        tableEleves.setItems(listeEleves);
+
+        // Écouteur sur la sélection dans la table pour afficher les détails dans les champs
+        tableEleves.getSelectionModel().selectedItemProperty().addListener(
+                (obs, oldSelection, newSelection) -> afficherDetails(newSelection));
+    }
+
+    @FXML
+    private void handleAjouter(ActionEvent event) {
         try {
-            eleveList.setAll(eleveDAO.getAllEleves());
-            tableView.setItems(eleveList);
-        } catch (SQLException e) {
-            showAlert("Erreur", "Impossible de charger les étudiants: " + e.getMessage());
+            String code = txtCode.getText().trim();
+            String nom = txtNom.getText().trim();
+            String prenom = txtPrenom.getText().trim();
+            int niveau = Integer.parseInt(txtNiveau.getText().trim());
+            String codeFil = txtCodeFil.getText().trim();
+
+            if(code.isEmpty() || nom.isEmpty() || prenom.isEmpty() || codeFil.isEmpty()) {
+                showAlert("Erreur", "Veuillez remplir tous les champs.");
+                return;
+            }
+
+            int id = listeEleves.size() + 1; // Id généré simplement ici
+
+            Eleve eleve = new Eleve(id, code, nom, prenom, niveau, codeFil);
+            listeEleves.add(eleve);
+            clearTextFields();
+        } catch (NumberFormatException e) {
+            showAlert("Erreur", "Le niveau doit être un nombre entier.");
         }
     }
 
-    private void loadFilieres() throws SQLException {
-        ObservableList<String> filieres = FXCollections.observableArrayList(eleveDAO.getAllFilieres());
-        filiereComboBox.setItems(filieres);
-    }
-
-    private void loadNiveaux(String filiereCode) {
-        if (filiereCode != null) {
+    @FXML
+    private void handleModifier(ActionEvent event) {
+        Eleve selected = tableEleves.getSelectionModel().getSelectedItem();
+        if (selected != null) {
             try {
-                ObservableList<Integer> niveaux = FXCollections.observableArrayList(eleveDAO.getNiveauxByFiliere(filiereCode));
-                niveauComboBox.setItems(niveaux);
-                niveauComboBox.setValue(null);
-            } catch (SQLException e) {
-                showAlert("Erreur", "Échec de chargement des niveaux: " + e.getMessage());
+                String code = txtCode.getText().trim();
+                String nom = txtNom.getText().trim();
+                String prenom = txtPrenom.getText().trim();
+                int niveau = Integer.parseInt(txtNiveau.getText().trim());
+                String codeFil = txtCodeFil.getText().trim();
+
+                if(code.isEmpty() || nom.isEmpty() || prenom.isEmpty() || codeFil.isEmpty()) {
+                    showAlert("Erreur", "Veuillez remplir tous les champs.");
+                    return;
+                }
+
+                selected.setCode(code);
+                selected.setNom(nom);
+                selected.setPrenom(prenom);
+                selected.setNiveau(niveau);
+                selected.setCodeFil(codeFil);
+
+                tableEleves.refresh();
+                clearTextFields();
+            } catch (NumberFormatException e) {
+                showAlert("Erreur", "Le niveau doit être un nombre entier.");
             }
+        } else {
+            showAlert("Attention", "Veuillez sélectionner un élève à modifier.");
         }
     }
 
-    private void resetForm() {
-        codeTextField.clear();
-        nomTextField.clear();
-        prenomTextField.clear();
-        filiereComboBox.setValue(null);
-        niveauComboBox.setValue(null);
-    }
-
-    private void addEleve() {
-        String code = codeTextField.getText();
-        String nom = nomTextField.getText();
-        String prenom = prenomTextField.getText();
-        String filiere = filiereComboBox.getValue();
-        Integer niveau = niveauComboBox.getValue();
-
-        if (code.isEmpty() || nom.isEmpty() || prenom.isEmpty() || filiere == null || niveau == null) {
-            showAlert("Erreur", "Tous les champs sont obligatoires.");
-            return;
-        }
-        try {
-            if (eleveDAO.getEleveByCode(code) != null) {
-                showAlert("Erreur", "Le code doit être unique.");
-                return;
-            }
-            Eleve eleve = new Eleve(0, code, nom, prenom, "", 0, niveau, filiere);
-            eleveDAO.addEleve(eleve);
-            eleveList.add(eleve);
-            resetForm();
-            showAlert("Succès", "Étudiant ajouté avec succès.");
-        } catch (SQLException e) {
-            showAlert("Erreur", "Échec d'ajout: " + e.getMessage());
+    @FXML
+    private void handleSupprimer(ActionEvent event) {
+        Eleve selected = tableEleves.getSelectionModel().getSelectedItem();
+        if (selected != null) {
+            listeEleves.remove(selected);
+            clearTextFields();
+        } else {
+            showAlert("Attention", "Veuillez sélectionner un élève à supprimer.");
         }
     }
 
-    private void modifyEleve() {
-        String code = codeTextField.getText();
-        try {
-            if (code.isEmpty() || eleveDAO.getEleveByCode(code) == null) {
-                showAlert("Erreur", "Code invalide ou inexistant.");
-                return;
-            }
-            Eleve eleve = new Eleve(0, code, nomTextField.getText(), prenomTextField.getText(), "", 0,
-                    niveauComboBox.getValue(), filiereComboBox.getValue());
-            eleveDAO.updateEleve(eleve);
-            showAlert("Succès", "Étudiant modifié.");
-        } catch (SQLException e) {
-            showAlert("Erreur", "Échec de modification: " + e.getMessage());
+    private void afficherDetails(Eleve eleve) {
+        if (eleve != null) {
+            txtCode.setText(eleve.getCode());
+            txtNom.setText(eleve.getNom());
+            txtPrenom.setText(eleve.getPrenom());
+            txtNiveau.setText(String.valueOf(eleve.getNiveau()));
+            txtCodeFil.setText(eleve.getCodeFil());
+        } else {
+            clearTextFields();
         }
     }
 
-    private void deleteEleve() {
-        String code = codeTextField.getText();
-        try {
-            if (code.isEmpty() || eleveDAO.getEleveByCode(code) == null) {
-                showAlert("Erreur", "Code invalide ou inexistant.");
-                return;
-            }
-            if (showConfirmation("Confirmation", "Confirmer la suppression ?")) {
-                Eleve eleve = eleveDAO.getEleveByCode(code);
-                eleveDAO.deleteEleve(eleve.getId());
-                archiveDeletedEleve(eleve);
-                eleveList.remove(eleve);
-                resetForm();
-                showAlert("Succès", "Étudiant supprimé et archivé.");
-            }
-        } catch (SQLException e) {
-            showAlert("Erreur", "Échec de suppression: " + e.getMessage());
-        }
+    private void clearTextFields() {
+        txtCode.clear();
+        txtNom.clear();
+        txtPrenom.clear();
+        txtNiveau.clear();
+        txtCodeFil.clear();
     }
 
-    private void searchEleves() {
-        String code = codeCheckBox.isSelected() ? codeTextField.getText() : null;
-        String nom = nomCheckBox.isSelected() ? nomTextField.getText() : null;
-        String prenom = prenomCheckBox.isSelected() ? prenomTextField.getText() : null;
-
-        if (code != null) {
-            nomCheckBox.setSelected(false);
-            prenomCheckBox.setSelected(false);
-        }
-        try {
-            List<Eleve> results = eleveDAO.searchEleves(code, nom, prenom);
-            eleveList.setAll(results);
-        } catch (SQLException e) {
-            showAlert("Erreur", "Échec de recherche: " + e.getMessage());
-        }
-    }
-
-    private void openNoteManagement() {
-        String code = codeTextField.getText();
-        try {
-            if (code.isEmpty() || eleveDAO.getEleveByCode(code) == null) {
-                showAlert("Erreur", "Code étudiant invalide ou inexistant.");
-                return;
-            }
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/example/javafx_ghilani/note_management.fxml"));
-            Stage stage = new Stage();
-            stage.setScene(new Scene(loader.load()));
-            stage.initModality(Modality.APPLICATION_MODAL);
-            stage.setTitle("Gestion des Notes");
-            NoteManagementController controller = loader.getController();
-            controller.setEleveCode(code);
-            stage.showAndWait();
-        } catch (IOException | SQLException e) {
-            showAlert("Erreur", "Erreur de chargement: " + e.getMessage());
-        }
-    }
-
-    private void archiveDeletedEleve(Eleve eleve) {
-        System.out.println("Archivé: " + eleve.getCode() + " à " + LocalDateTime.now());
-    }
-
-    private void showAlert(String title, String message) {
+    private void showAlert(String titre, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle(title);
+        alert.setTitle(titre);
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
-    }
-
-    private boolean showConfirmation(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        return alert.showAndWait().filter(response -> response == ButtonType.OK).isPresent();
     }
 }

@@ -1,53 +1,47 @@
 package com.example.javafx_ghilani.model;
 
+import javafx.beans.property.*;
+
 public class Eleve {
-    private int id;
-    private String code;
-    private String nom;
-    private String prenom;
-    private String email;
-    private int annee;
-    private int niveau;
-    private String filiere;
+    private final IntegerProperty id;
+    private final StringProperty code;
+    private final StringProperty nom;
+    private final StringProperty prenom;
+    private final IntegerProperty niveau;
+    private final StringProperty codeFil;
 
-    // Champs manquants
-    private int age;
-    private String codeFil;
-
-    public Eleve(int id, String code, String nom, String prenom, String email, int annee, int niveau, String filiere) {
-        this.id = id;
-        this.code = code;
-        this.nom = nom;
-        this.prenom = prenom;
-        this.email = email;
-        this.annee = annee;
-        this.niveau = niveau;
-        this.filiere = filiere;
-        this.codeFil = filiere; // si codeFil est identique à filiere
-        this.age = 0; // valeur par défaut
+    public Eleve(int id, String code, String nom, String prenom, int niveau, String codeFil) {
+        this.id = new SimpleIntegerProperty(id);
+        this.code = new SimpleStringProperty(code);
+        this.nom = new SimpleStringProperty(nom);
+        this.prenom = new SimpleStringProperty(prenom);
+        this.niveau = new SimpleIntegerProperty(niveau);
+        this.codeFil = new SimpleStringProperty(codeFil);
     }
 
-    // Getters
-    public int getId() { return id; }
-    public String getCode() { return code; }
-    public String getNom() { return nom; }
-    public String getPrenom() { return prenom; }
-    public String getEmail() { return email; }
-    public int getAnnee() { return annee; }
-    public int getNiveau() { return niveau; }
-    public String getFiliere() { return filiere; }
-    public int getAge() { return age; }
-    public String getCodeFil() { return codeFil; }
+    // Getters et setters JavaFX
 
-    // Setters
-    public void setId(int id) { this.id = id; }
-    public void setCode(String code) { this.code = code; }
-    public void setNom(String nom) { this.nom = nom; }
-    public void setPrenom(String prenom) { this.prenom = prenom; }
-    public void setEmail(String email) { this.email = email; }
-    public void setAnnee(int annee) { this.annee = annee; }
-    public void setNiveau(int niveau) { this.niveau = niveau; }
-    public void setFiliere(String filiere) { this.filiere = filiere; }
-    public void setAge(int age) { this.age = age; }
-    public void setCodeFil(String codeFil) { this.codeFil = codeFil; }
+    public int getId() { return id.get(); }
+    public void setId(int value) { id.set(value); }
+    public IntegerProperty idProperty() { return id; }
+
+    public String getCode() { return code.get(); }
+    public void setCode(String value) { code.set(value); }
+    public StringProperty codeProperty() { return code; }
+
+    public String getNom() { return nom.get(); }
+    public void setNom(String value) { nom.set(value); }
+    public StringProperty nomProperty() { return nom; }
+
+    public String getPrenom() { return prenom.get(); }
+    public void setPrenom(String value) { prenom.set(value); }
+    public StringProperty prenomProperty() { return prenom; }
+
+    public int getNiveau() { return niveau.get(); }
+    public void setNiveau(int value) { niveau.set(value); }
+    public IntegerProperty niveauProperty() { return niveau; }
+
+    public String getCodeFil() { return codeFil.get(); }
+    public void setCodeFil(String value) { codeFil.set(value); }
+    public StringProperty codeFilProperty() { return codeFil; }
 }
